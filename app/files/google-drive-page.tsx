@@ -5,7 +5,6 @@ import { enqueueSnackbar } from "notistack"
 import { useEffect, useRef, useState } from "react"
 import { FileList } from "@/src/components/file-list"
 import {
-  Badge,
   Box,
   Fade,
   IconButton,
@@ -18,22 +17,14 @@ import {
   Typography,
 } from "@mui/material"
 import {
-  ArrowBack,
   MoreVert,
   CloudDownload,
   CloudOff,
-  HomeRounded,
-  SettingsRounded,
-  FolderRounded,
-  ArrowUpwardRounded,
-  ChevronRightRounded,
+  ArrowBackIosNewRounded,
+  AddRounded,
 } from "@mui/icons-material"
 import { useRouter } from "@/src/router"
 import { useThemeStore } from "@/src/stores/theme-store"
-import {
-  MaterialDynamicColors,
-  hexFromArgb,
-} from "@material/material-color-utilities"
 import { useNetworkMonitor } from "@/src/stores/network-monitor"
 import { MarqueeText } from "@/src/components/marquee-text"
 import AppTopBar from "@/src/components/app-top-bar"
@@ -43,12 +34,13 @@ import {
   BaseFileItem,
 } from "@/src/drive-clients/base-drive-client"
 import { GoogleDriveClient } from "@/src/drive-clients/google-drive-client"
-import { AddRounded } from "@mui/icons-material"
 import { css } from "@emotion/react"
+
+// Apple-style Brand Blue color for BLUOMtech corporate identity
+const BLUOM_BLUE = "#007AFF"
 
 export default function GoogleDrivePage() {
   const [fileStoreState, fileStoreActions] = useFileStore()
-
   const networkMonitor = useNetworkMonitor()
   const scrollTargetRef = useRef<Node | undefined>(undefined)
   const [currentFile, setCurrentFile] = useState<BaseFileItem | null>(null)
@@ -56,12 +48,8 @@ export default function GoogleDrivePage() {
   const [folderId, setFolderId] = useState<string | undefined>(undefined)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [remoteFetching, setRemoteFetching] = useState(false)
-
   const [themeStoreState] = useThemeStore()
-
   const [routerState, routerActions] = useRouter()
-  const routerActionsRef = useRef(routerActions)
-  routerActionsRef.current = routerActions
 
   useEffect(() => {
     if (routerState.pathname !== "/files") return
@@ -71,16 +59,11 @@ export default function GoogleDrivePage() {
   }, [routerState.hash, routerState.pathname])
 
   useEffect(() => {
-    if (!fileStoreState.configured) {
-      return
-    }
+    if (!fileStoreState.configured) return
 
     let isCancelled = false
-
     const getFiles = async () => {
-      if (!folderId) {
-        return
-      }
+      if (!folderId) return
       const currentFile = await fileStoreActions.getFileById(folderId)
       if (isCancelled) return
       if (!currentFile) return
@@ -89,50 +72,27 @@ export default function GoogleDrivePage() {
       try {
         const localFiles = await fileStoreActions.getChildrenLocal(folderId)
         if (isCancelled) return
-        // console.log("LOCAL")
-        if (localFiles) {
-          setFiles(localFiles)
-        }
+        if (localFiles) setFiles(localFiles)
       } catch (error) {
         console.error(error)
         enqueueSnackbar(`${error}`, { variant: "error" })
       }
     }
     getFiles()
-    return () => {
-      isCancelled = true
-    }
+    return () => { isCancelled = true }
   }, [fileStoreState.configured, folderId])
 
-  // Auto-sync from remote when online
-  // Note: Excluded for root folder because:
-  // - Root folder is a virtual folder (id: "root") that exists only in IndexedDB
-  // - It doesn't exist on Google Drive API (actual Drive root has a different ID)
-  // - Root content is built by addPickerGroup() when user selects files via Picker
-  // - Calling getChildrenRemote("root") would query 'root' in parents, which returns empty/error
   useEffect(() => {
-    if (fileStoreState.driveStatus != "online" || !folderId) {
-      return
-    }
-
-    // Skip auto-sync for root folder (virtual folder, not on Google Drive)
-    if (folderId === fileStoreState.rootFolderId) {
-      console.log(`[Google Drive] Skipping auto-sync for virtual root folder`)
-      return
-    }
+    if (fileStoreState.driveStatus !== "online" || !folderId) return
+    if (folderId === fileStoreState.rootFolderId) return
 
     let isCancelled = false
-
     const getFiles = async () => {
       try {
         setRemoteFetching(true)
-        console.log(`[Google Drive] Auto-syncing folder from remote: ${folderId}`)
         const remoteFiles = await fileStoreActions.getChildrenRemote(folderId)
         if (isCancelled) return
-        // console.log("REMOTE")
-        if (remoteFiles) {
-          setFiles(remoteFiles)
-        }
+        if (remoteFiles) setFiles(remoteFiles)
         setRemoteFetching(false)
       } catch (error) {
         console.error(error)
@@ -141,24 +101,17 @@ export default function GoogleDrivePage() {
       }
     }
     getFiles()
-    return () => {
-      isCancelled = true
-    }
+    return () => { isCancelled = true }
   }, [fileStoreState.driveStatus, folderId])
 
-  const handleMoreClose = () => {
-    setAnchorEl(null)
-  }
+  const handleMoreClose = () => setAnchorEl(null)
 
   const handleDownload = async () => {
     handleMoreClose()
     if (!files) return
 
     const fileStoreAction = fileStoreActions
-
-    const audioFiles = files.filter(
-      file => file.type === "audio-track"
-    ) as AudioTrackFileItem[]
+    const audioFiles = files.filter(file => file.type === "audio-track") as AudioTrackFileItem[]
     audioFiles.forEach(async file => {
       try {
         await fileStoreAction.requestDownloadTrack(file.id)
@@ -183,24 +136,19 @@ export default function GoogleDrivePage() {
         return
       }
 
-      // Step 1: Select music files
-      // If not the root folder, specify the current folder as the parent
       const parentIdForPicker = folderId !== fileStoreState.rootFolderId ? folderId : undefined
       const pickedFiles = await googleDriveClient.openFilesPicker(parentIdForPicker)
       if (pickedFiles.length === 0) return
 
-      // Step 2: Extract unique parentIds
       const uniqueParentIds = Array.from(
         new Set(pickedFiles.map(f => f.parentId).filter((id): id is string => id !== undefined))
       )
 
-      // Step 3: Check access permission for each parentId
       const folderNames = new Map<string, string>()
       const foldersNeedingAccess: string[] = []
 
       for (const parentId of uniqueParentIds) {
-        const { hasAccess, folderName } =
-          await googleDriveClient.checkFolderAccess(parentId)
+        const { hasAccess, folderName } = await googleDriveClient.checkFolderAccess(parentId)
         if (hasAccess && folderName) {
           folderNames.set(parentId, folderName)
         } else {
@@ -208,34 +156,21 @@ export default function GoogleDrivePage() {
         }
       }
 
-      // Step 4: Display picker for folders that need access permission
       if (foldersNeedingAccess.length > 0) {
-        enqueueSnackbar(
-          `Access permission required for ${foldersNeedingAccess.length} folder${foldersNeedingAccess.length > 1 ? "s" : ""}`
-        )
-
+        enqueueSnackbar(`Access permission required for ${foldersNeedingAccess.length} folder${foldersNeedingAccess.length > 1 ? "s" : ""}`)
         for (const parentId of foldersNeedingAccess) {
-          const selectedFolder = await googleDriveClient.openFolderPicker(
-            parentId
-          )
+          const selectedFolder = await googleDriveClient.openFolderPicker(parentId)
           if (selectedFolder && selectedFolder.id === parentId) {
             folderNames.set(parentId, selectedFolder.name)
           } else {
-            // Save name even if a different folder is selected
-            // Default name if cancelled
             folderNames.set(parentId, `Folder ${parentId.substring(0, 8)}`)
           }
         }
       }
 
-      // Step 5: Save files and folder names
-      const groupId = await fileStoreActions.addPickerGroup(
-        pickedFiles,
-        folderNames
-      )
+      await fileStoreActions.addPickerGroup(pickedFiles, folderNames)
       enqueueSnackbar(`Added ${pickedFiles.length} files`)
 
-      // Update file list (re-fetch contents of currently displayed folder)
       if (folderId) {
         const children = await fileStoreActions.getChildrenLocal(folderId)
         setFiles(children)
@@ -246,10 +181,6 @@ export default function GoogleDrivePage() {
     }
   }
 
-  const colorOnSurfaceVariant = hexFromArgb(
-    MaterialDynamicColors.onSurfaceVariant.getArgb(themeStoreState.scheme)
-  )
-
   const downloadingCount = Object.keys(fileStoreState.syncingTrackFiles).length
 
   return (
@@ -258,145 +189,117 @@ export default function GoogleDrivePage() {
       sx={{
         height: "100%",
         overflow: "hidden",
+        backgroundColor: "#f5f5f7", // Soft Apple layout background
       }}
     >
       <AppTopBar scrollTarget={scrollTargetRef.current}>
-        <Toolbar>
+        <Toolbar sx={{ px: 1, justifyContent: "space-between" }}>
+          
+          {/* Back Navigation Action */}
           <IconButton
             color="inherit"
-            // edge="start"
-            sx={{ ml: -1 }}
+            edge="start"
             onClick={() => {
-              routerActions.goHome()
-            }}
-          >
-            <HomeRounded />
-          </IconButton>
-
-          {/* <ChevronRightRounded color="inherit" /> */}
-
-          <Typography
-            sx={{
-              // mx: 1,
-              color: colorOnSurfaceVariant,
-            }}
-          >
-            /
-          </Typography>
-
-          <IconButton
-            size="large"
-            // edge="start"
-            color="inherit"
-            onClick={() => {
-              if (!currentFile) return
-              if (currentFile.id === fileStoreState.rootFolderId) {
+              if (!currentFile || currentFile.id === fileStoreState.rootFolderId) {
                 routerActions.goHome()
                 return
               }
-
               const parentId = currentFile.parentId
-              if (!parentId) {
-                return
-              }
-              routerActions.goFile(parentId)
+              if (parentId) routerActions.goFile(parentId)
             }}
+            sx={{ color: BLUOM_BLUE, display: "flex", alignItems: "center" }}
           >
-            <ArrowUpwardRounded />
+            <ArrowBackIosNewRounded sx={{ fontSize: 20, mr: 0.5 }} />
+            <Typography variant="body1" sx={{ fontWeight: 500 }}>Back</Typography>
           </IconButton>
-          <FolderRounded color="inherit" sx={{ mr: 1 }} />
 
-          <MarqueeText
-            variant="h6"
-            sx={{
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              flexGrow: 1,
-            }}
-            text={currentFile?.name || "Files"}
-          />
-          {downloadingCount > 0 ? (
-            <DownloadingIndicator
-              count={downloadingCount}
-              color={colorOnSurfaceVariant}
-            />
-          ) : null}
-          <IconButton
-            color="inherit"
-            onClick={handleAddFiles}
-            disabled={!networkMonitor.isOnline}
-          >
-            <AddRounded />
-          </IconButton>
-          <div>
-            <IconButton
-              color="inherit"
-              edge="end"
-              onClick={event => {
-                setAnchorEl(event.currentTarget)
+          {/* Clean Unified Window Context Center Title */}
+          <Box sx={{ flexGrow: 1, mx: 2, overflow: "hidden", display: "flex", justifyContent: "center" }}>
+            <MarqueeText
+              variant="subtitle1"
+              sx={{
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                fontWeight: 600,
+                color: "text.primary",
+                textAlign: "center"
               }}
+              text={currentFile?.name || "Files"}
+            />
+          </Box>
+
+          {/* Top Right Context Controls */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            {downloadingCount > 0 && (
+              <DownloadingIndicator
+                count={downloadingCount}
+                color={BLUOM_BLUE}
+              />
+            )}
+            
+            <IconButton
+              onClick={handleAddFiles}
+              disabled={!networkMonitor.isOnline}
+              sx={{ color: networkMonitor.isOnline ? BLUOM_BLUE : "text.disabled" }}
             >
-              <MoreVert />
+              <AddRounded />
             </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              keepMounted
-              open={Boolean(anchorEl)}
-              onClose={handleMoreClose}
-            >
-              <MenuItem
-                disabled={!networkMonitor.isOnline}
-                onClick={handleDownload}
+
+            <Box>
+              <IconButton
+                edge="end"
+                onClick={event => setAnchorEl(event.currentTarget)}
+                sx={{ color: "text.primary" }}
               >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  {networkMonitor.isOnline ? <CloudDownload /> : <CloudOff />}
-                </ListItemIcon>
-                <ListItemText>Download</ListItemText>
-              </MenuItem>
-              {/* <Divider /> */}
-              <MenuItem
-                onClick={() => {
-                  routerActionsRef.current.goSettings()
-                }}
+                <MoreVert />
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                keepMounted
+                open={Boolean(anchorEl)}
+                onClose={handleMoreClose}
+                sx={{ "& .MuiPaper-root": { borderRadius: "12px", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" } }}
               >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <SettingsRounded />
-                </ListItemIcon>
-                <ListItemText>Settings</ListItemText>
-              </MenuItem>
-            </Menu>
-          </div>
+                <MenuItem
+                  disabled={!networkMonitor.isOnline}
+                  onClick={handleDownload}
+                >
+                  <ListItemIcon sx={{ color: networkMonitor.isOnline ? BLUOM_BLUE : "inherit" }}>
+                    {networkMonitor.isOnline ? <CloudDownload /> : <CloudOff />}
+                  </ListItemIcon>
+                  <ListItemText>Download Tracks</ListItemText>
+                </MenuItem>
+              </Menu>
+            </Box>
+          </Box>
         </Toolbar>
+
         <Fade
           in={remoteFetching}
-          style={{
-            transitionDelay: remoteFetching ? "800ms" : "0ms",
-          }}
+          style={{ transitionDelay: remoteFetching ? "800ms" : "0ms" }}
           unmountOnExit
         >
-          <LinearProgress sx={{ width: "100%" }} />
+          <LinearProgress sx={{ width: "100%", height: "2px", backgroundColor: "transparent", "& .MuiLinearProgress-bar": { backgroundColor: BLUOM_BLUE } }} />
         </Fade>
       </AppTopBar>
+
       <Box
         component="div"
         ref={scrollTargetRef}
         sx={{
-          // mt: 8,
           pt: 8,
           ml: `env(safe-area-inset-left, 0)`,
           mr: `env(safe-area-inset-right, 0)`,
           overflow: "auto",
           height: "100%",
-          scrollbarColor: `${colorOnSurfaceVariant} transparent`,
-          scrollbarWidth: "thin",
-          pb: `calc(env(safe-area-inset-bottom, 0) + 144px)`,
+          pb: `calc(env(safe-area-inset-bottom, 0px) + 96px)`,
         }}
       >
         <FileList
           cssStyle={css({
-            maxWidth: "1040px",
-            margin: "0 auto",
+            maxWidth: "600px", // Match clean single column layout boundaries
+            margin: "16px auto 0 auto",
             width: "100%",
           })}
           files={files}
