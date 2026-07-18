@@ -2,7 +2,17 @@ export interface Options {
   onNeedRefresh: (updateSw: () => void) => void
 }
 
+// Extend global Window types interface parameters for compiler safety
+declare global {
+  interface Window {
+    serwist?: {
+      register: () => Promise<ServiceWorkerRegistration | undefined>
+    }
+  }
+}
+
 export const registerServiceWorker = async (options: Options) => {
+  // Gracefully abort execution if PWA engines are not active or supported by the browser context
   if (!("serviceWorker" in navigator) || window.serwist === undefined) {
     return
   }
@@ -17,7 +27,7 @@ export const registerServiceWorker = async (options: Options) => {
     const updateSW = () => {
       const { waiting } = reg
       if (waiting) {
-        console.log("Sending SKIP_WAITING message to waiting clients")
+        console.log("[BLUOMmusic Engine] Activating next cache update generation core...");
         waiting.postMessage({ type: 'SKIP_WAITING' })
       }
     }
@@ -25,8 +35,7 @@ export const registerServiceWorker = async (options: Options) => {
     options.onNeedRefresh(updateSW)
   }
 
-  // ensure the case when the updatefound event was missed is also handled
-  // by re-invoking the prompt when there's a waiting Service Worker
+  // Handle case where updatefound event was missed by catching active waiting routines instantly
   if (registration.waiting) {
     needsRefresh(registration)
   }
@@ -39,11 +48,10 @@ export const registerServiceWorker = async (options: Options) => {
       return
     }
 
-    // wait until the new Service worker is actually installed (ready to take over)
     installing.addEventListener("statechange", () => {
       if (registration.waiting) {
         if (navigator.serviceWorker.controller) {
-          // if there's an existing controller (previous Service Worker), show the prompt
+          // Trigger prompt window parameters to flag core code deployment updates
           needsRefresh(registration)
         } else {
           firstLoad = true
@@ -53,7 +61,8 @@ export const registerServiceWorker = async (options: Options) => {
   })
 
   let refreshing = false
-  // detect controller change and refresh the page
+  
+  // Intercept worker context updates to safely restart engine threads natively
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (firstLoad) {
       firstLoad = false
