@@ -11,12 +11,12 @@ English | [日本語](./README_jp.md)
     <a href="https://contentsviewer.github.io/cloud-music-box/">Launch App</a>
 </h2>
 <p align="center">
-    <a href="https://contentsviewer.github.io/cloud-music-box/">
-      https://contentsviewer.github.io/cloud-music-box/
+    <a href="BLUOM Music">
+      https://bladegh13.github.io/BLUOMmusic/
     </a>
 </p>
 
-Cloud Music Box is a PWA music player that plays music from cloud storage (`OneDrive`, `Google Drive`), designed to let you feel and enjoy music more deeply.
+BLUOM Music is a PWA music player that plays music from cloud storage (`OneDrive`, `Google Drive`), designed to let you feel and enjoy music more deeply.
 
 It has the following features:
 
