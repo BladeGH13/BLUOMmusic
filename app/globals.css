@@ -1,7 +1,47 @@
+/* --- BLUOMmusic Core Theme Architecture --- */
+
+:root {
+  /* Apple iOS Brand Identity & Accent Palettes */
+  --bluom-blue: #007aff;
+  --apple-bg-gray: #f5f5f7;
+  --apple-sheet-white: rgba(255, 255, 255, 0.85);
+  
+  /* System font hierarchy matching native platforms */
+  --font-apple-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
 html, body {
-  /* min-height: 100vh; */
   box-sizing: border-box;
   height: 100%;
   padding: 0;
   margin: 0;
+  
+  /* Styling foundations */
+  font-family: var(--font-apple-system);
+  background-color: var(--apple-bg-gray);
+  color: #1d1d1f;
+  
+  /* Performance parameters for clean app views */
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure all elements calculate layout boxes identically */
+*, *::before, *::after {
+  box-sizing: inherit;
+  
+  /* Disable messy default mobile highlights when tapping navigation links */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Fluid, modern scrolling physics across content views */
+div, main, section {
+  /* Apple elastic momentum scrolling engine mapping */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text selections from interrupting interactive media cards */
+button,.MuiButtonBase-root, [role="button"] {
+  user-select: none;
 }
