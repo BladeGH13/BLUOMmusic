@@ -1,15 +1,17 @@
 "use client"
 
 import {
-  createGoogleDriveClient,
   saveAccessToken,
   saveUserInfo,
 } from "@/src/drive-clients/google-drive-client"
 import { useRouter } from "@/src/router"
-import { Backdrop, Box, CircularProgress, Grow } from "@mui/material"
-import { useEffect, useRef, useState } from "react"
+import { Backdrop, CircularProgress } from "@mui/material"
+import { useEffect, useRef } from "react"
 
-// JWT（ID Token）をパースする簡単な関数
+// Apple-style Brand Blue color for BLUOMtech corporate identity
+const BLUOM_BLUE = "#007AFF"
+
+// Helper function to decode standard OAuth JWT payloads
 function parseJWT(token: string) {
   const base64Url = token.split(".")[1]
   const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
@@ -24,66 +26,47 @@ function parseJWT(token: string) {
 
 export default function Page() {
   const [routerState, routerActions] = useRouter()
-
   const refProcessed = useRef(false)
+
   useEffect(() => {
     const handleGoogleRedirect = async () => {
       if (refProcessed.current) return
       refProcessed.current = true
-      // URLパラメータからauthorization codeを取得
+
+      // Parse OAuth credentials from the window URL hash location string
       const hash = new URLSearchParams(location.hash.substring(1))
       const accessToken = hash.get("access_token")
-      // const urlParams = new URLSearchParams(window.location.search)
-      // console.log(urlParams)
-      // const accessToken = urlParams.get("access_token")
+      
       if (accessToken === null) {
-        console.error("Access token not found in URL")
+        console.error("Access token not found in URL hash parameter")
         return
       }
-      console.log(accessToken)
+      
       saveAccessToken(accessToken)
 
-      // トークンの有効期限を保存
+      // Calculate and save precise local token expiration window limits
       const expiresIn = hash.get("expires_in")
       if (expiresIn) {
         const expiresInSeconds = parseInt(expiresIn)
         const expiresAt = Date.now() + expiresInSeconds * 1000
         localStorage.setItem("googleDrive.tokenExpires", expiresAt.toString())
-        console.log(`Token expires in ${expiresInSeconds} seconds (at ${new Date(expiresAt).toISOString()})`)
       }
 
       const idToken = hash.get("id_token")
       if (idToken !== null) {
         const data = parseJWT(idToken)
-        console.log("ID Token Data:", data)
         saveUserInfo(data.sub)
       }
 
+      // Return user to the view they were working on before logging in
       const lastHref = routerActions.goLastHref()
       if (!lastHref) {
         routerActions.goHome()
       }
-
-      // const code = urlParams.get("code")
-      // const error = urlParams.get("error")
-
-      // console.log(error, code)
-      // if (error) {
-      //   console.error(error)
-      //   return
-      // }
-      // if (!code) {
-      //   console.error("Authorization code not found in URL")
-      //   return
-      // }
-
-      // console.log("Google authorization code received:", code)
-      // // Google Drive クライアントを作成
-      // const driveClient = await createGoogleDriveClient()
-      // const accessToken = await driveClient.fetchAccessToken(code)
     }
+    
     handleGoogleRedirect()
-  }, [])
+  }, [routerActions])
 
   return (
     <div>
@@ -93,9 +76,10 @@ export default function Page() {
           zIndex: theme => theme.zIndex.drawer + 1,
           display: "flex",
           flexDirection: "column",
+          backgroundColor: "#f5f5f7", // Solid Apple gray background instead of black mask
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: BLUOM_BLUE }} />
       </Backdrop>
     </div>
   )
