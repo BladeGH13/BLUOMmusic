@@ -1,7 +1,7 @@
 {
-  "name": "Cloud Music Box",
-  "short_name": "Cloud Music Box",
-  "description": "A pwa music player that plays music from your cloud storage.",
+  "name": "BLUOM Music",
+  "short_name": "BLUOM Music",
+  "description": "A premium open-source cloud storage streaming engine by BLUOM tech.",
   "icons": [
     {
       "src": "icon-192x192-maskable.png",
@@ -28,9 +28,9 @@
       "purpose": "any"
     }
   ],
-  "background_color": "#000000",
+  "background_color": "#f5f5f7",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#f5f5f7",
   "start_url": "./",
   "scope": "."
 }
