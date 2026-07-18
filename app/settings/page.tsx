@@ -5,11 +5,7 @@ import AppTopBar from "@/src/components/app-top-bar"
 import { useRouter } from "@/src/router"
 import { useFileStore } from "@/src/stores/file-store"
 import { useThemeStore } from "@/src/stores/theme-store"
-import {
-  MaterialDynamicColors,
-  hexFromArgb,
-} from "@material/material-color-utilities"
-import { ArrowBackRounded, SettingsRounded } from "@mui/icons-material"
+import { ArrowBackRounded } from "@mui/icons-material"
 import {
   Box,
   IconButton,
@@ -39,16 +35,48 @@ import { css } from "@emotion/react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
+// Apple-style Brand Blue color for BLUOMtech corporate identity
+const BLUOM_BLUE = "#007AFF"
+
 function formatBytes(bytes: number, decimals = 2) {
   if (bytes === 0) return "0 Bytes"
-
   const k = 1024
   const dm = decimals < 0 ? 0 : decimals
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
+}
+
+// iOS Inspired Card Group Wrapper
+function SettingGroup({ children, title }: { children: React.ReactNode; title: string }) {
+  return (
+    <Box sx={{ mb: 3 }}>
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          pl: 2, 
+          textTransform: "uppercase", 
+          fontWeight: 600, 
+          color: "text.secondary",
+          letterSpacing: "0.5px"
+        }}
+      >
+        {title}
+      </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 0.75,
+          borderRadius: "14px",
+          overflow: "hidden",
+          border: "1px solid rgba(0,0,0,0.05)",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        <List disablePadding>{children}</List>
+      </Paper>
+    </Box>
+  )
 }
 
 interface StorageSettingsAreaProps {
@@ -58,17 +86,10 @@ interface StorageSettingsAreaProps {
 function StorageSettingsArea({ sx }: StorageSettingsAreaProps) {
   const [quota, setQuota] = useState<number | undefined>(undefined)
   const [usage, setUsage] = useState<number | undefined>(undefined)
-  const [themeStoreState] = useThemeStore()
   const [routerState, routerActions] = useRouter()
-
   const [fileStoreState, fileStoreActions] = useFileStore()
-  const [clearLocalDataDialogOpen, setClearLocalDataDialogOpen] =
-    useState(false)
+  const [clearLocalDataDialogOpen, setClearLocalDataDialogOpen] = useState(false)
   const [backdropOpen, setBackdropOpen] = useState(false)
-
-  const handleCloseClearLocalDataDialog = () => {
-    setClearLocalDataDialogOpen(false)
-  }
 
   async function getStorageInfo() {
     const { quota, usage } = await navigator.storage.estimate()
@@ -82,209 +103,139 @@ function StorageSettingsArea({ sx }: StorageSettingsAreaProps) {
 
   const { blobsStorageMaxBytes, blobsStorageUsageBytes } = fileStoreState
 
-  const colorOnSurfaceVariant = hexFromArgb(
-    MaterialDynamicColors.onSurfaceVariant.getArgb(themeStoreState.scheme)
-  )
-
   return (
-    <Box
-      component="div"
-      sx={{
-        ...sx,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Typography variant="h6">Storage</Typography>
-      <List>
-        <ListItem>
+    <Box component="div" sx={sx}>
+      <SettingGroup title="Storage Management">
+        <ListItem sx={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
           <ListItemText
-            primary="Local File"
-            secondary="Usage of downloaded audio files."
-            secondaryTypographyProps={{
-              sx: {
-                color: colorOnSurfaceVariant,
-              },
-            }}
+            primary="Local Audio Cache"
+            secondary="Space taken by downloaded tracks."
           />
-
-          <Typography>
-            {blobsStorageUsageBytes !== undefined
-              ? formatBytes(blobsStorageUsageBytes)
-              : "---"}
+          <Typography variant="body2" sx={{ fontWeight: 500, color: "text.secondary" }}>
+            {blobsStorageUsageBytes !== undefined ? formatBytes(blobsStorageUsageBytes) : "---"}
             {" / "}
-            {blobsStorageMaxBytes !== undefined
-              ? formatBytes(blobsStorageMaxBytes)
-              : "---"}
+            {blobsStorageMaxBytes !== undefined ? formatBytes(blobsStorageMaxBytes) : "---"}
           </Typography>
         </ListItem>
         <ListItem>
           <ListItemText
-            primary="App"
-            secondary="Usage of the entire application."
-            secondaryTypographyProps={{
-              sx: {
-                color: colorOnSurfaceVariant,
-              },
-            }}
+            primary="Total App Storage"
+            secondary="Overall disk footprint on this device."
           />
-          <Typography>
+          <Typography variant="body2" sx={{ fontWeight: 500, color: "text.secondary" }}>
             {usage !== undefined ? formatBytes(usage) : "---"} {" / "}
             {quota !== undefined ? formatBytes(quota) : "---"}
           </Typography>
         </ListItem>
-      </List>
+      </SettingGroup>
 
       <Button
-        variant="outlined"
+        variant="contained"
+        disableElevation
         color="error"
-        onClick={() => {
-          setClearLocalDataDialogOpen(true)
+        onClick={() => setClearLocalDataDialogOpen(true)}
+        sx={{
+          borderRadius: "12px",
+          textTransform: "none",
+          fontWeight: 600,
+          py: 1,
+          mb: 1,
+          backgroundColor: alpha("#FF3B30", 0.1),
+          color: "#FF3B30",
+          "&:hover": { backgroundColor: alpha("#FF3B30", 0.15) }
         }}
       >
-        Clear Local Data
+        Clear Local Data Cache
       </Button>
+
       <Dialog
         open={clearLocalDataDialogOpen}
-        onClose={handleCloseClearLocalDataDialog}
-        sx={{ "& .MuiDialog-paper": { borderRadius: "28px" } }}
+        onClose={() => setClearLocalDataDialogOpen(false)}
+        sx={{ "& .MuiDialog-paper": { borderRadius: "20px", p: 1 } }}
       >
-        <DialogTitle
-          sx={{
-            paddingTop: "24px",
-            paddingLeft: "24px",
-            paddingRight: "24px",
-            paddingBottom: "16px",
-          }}
-        >
-          Clear Local Data
-        </DialogTitle>
-        <DialogContent
-          sx={{
-            paddingBottom: "24px",
-          }}
-        >
-          <Typography>
-            Clear the downloaded audio files. This action cannot be undone.
+        <DialogTitle sx={{ fontWeight: 600 }}>Clear Cache</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This will permanently erase your offline downloaded songs from this device. You will need to re-download them to listen without internet.
           </Typography>
         </DialogContent>
-        <DialogActions
-          sx={{
-            paddingTop: "0px",
-            paddingBottom: "24px",
-            paddingLeft: "24px",
-            paddingRight: "24px",
-          }}
-        >
-          <Button autoFocus onClick={handleCloseClearLocalDataDialog}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setClearLocalDataDialogOpen(false)} sx={{ textTransform: "none", color: "text.secondary" }}>
             Cancel
           </Button>
           <Button
+            variant="contained"
+            disableElevation
             color="error"
             onClick={() => {
               setBackdropOpen(true)
               fileStoreActions
                 .clearAllLocalBlobs()
-                .then(() => {
-                  routerActions.goHome({ reload: true })
-                })
+                .then(() => routerActions.goHome({ reload: true }))
                 .catch(error => {
                   console.error(error)
                   setBackdropOpen(false)
                 })
             }}
+            sx={{ borderRadius: "8px", textTransform: "none" }}
           >
-            Clear & Reload
+            Clear Data
           </Button>
         </DialogActions>
       </Dialog>
-      {backdropOpen &&
-        createPortal(
-          <Backdrop
-            sx={theme => ({ zIndex: theme.zIndex.modal + 1 })}
-            open={backdropOpen}
-          >
-            <CircularProgress />
-          </Backdrop>,
-          document.body
-        )}
+      {backdropOpen && createPortal(
+        <Backdrop sx={{ zIndex: theme => theme.zIndex.modal + 1 }} open={backdropOpen}>
+          <CircularProgress sx={{ color: BLUOM_BLUE }} />
+        </Backdrop>,
+        document.body
+      )}
     </Box>
   )
 }
 
 function ScreenSettingsArea() {
-  const [themeStoreState] = useThemeStore()
-  const colorOnSurfaceVariant = hexFromArgb(
-    MaterialDynamicColors.onSurfaceVariant.getArgb(themeStoreState.scheme)
-  )
-
   const [isFullScreen, setIsFullScreen] = useState(false)
 
   useEffect(() => {
     setIsFullScreen(!!document.fullscreenElement)
   }, [])
 
-  const toggleFullScreen = () => {
+  const handleFullScreenToggle = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(err => {
-        console.error(
-          `Error attempting to enable full-screen mode: ${err.message} (${err.name})`
-        )
-        enqueueSnackbar(
-          `Error attempting to enable full-screen mode: ${err.message} (${err.name})`,
-          { variant: "error" }
-        )
+        console.error(err)
+        enqueueSnackbar(`Fullscreen failed: ${err.message}`, { variant: "error" })
       })
     } else {
       document.exitFullscreen()
     }
-  }
-
-  const handleFullScreenToggle = () => {
-    toggleFullScreen()
     setIsFullScreen(!isFullScreen)
   }
 
   useEffect(() => {
-    const handleFullScreenChange = () => {
-      setIsFullScreen(!!document.fullscreenElement)
-    }
-
-    document.addEventListener("fullscreenchange", handleFullScreenChange)
-
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullScreenChange)
-    }
+    const cb = () => setIsFullScreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", cb)
+    return () => document.removeEventListener("fullscreenchange", cb)
   }, [])
 
   return (
-    <div
-      css={css({
-        display: "flex",
-        flexDirection: "column",
-        marginTop: "16px",
-      })}
-    >
-      <Typography variant="h6">Screen</Typography>
-      <List>
-        <ListItem>
-          <ListItemText
-            primary="Full Screen"
-            secondary="Toggle full screen mode."
-            secondaryTypographyProps={{
-              sx: {
-                color: colorOnSurfaceVariant,
-              },
-            }}
-          />
-          <Switch
-            checked={isFullScreen}
-            edge="end"
-            onChange={handleFullScreenToggle}
-          />
-        </ListItem>
-      </List>
-    </div>
+    <SettingGroup title="Display Preferences">
+      <ListItem sx={{ py: 0.5 }}>
+        <ListItemText
+          primary="Immersive Full Screen"
+          secondary="Hide UI window headers while playing."
+        />
+        <Switch
+          checked={isFullScreen}
+          edge="end"
+          onChange={handleFullScreenToggle}
+          sx={{
+            "& .MuiSwitch-switchBase.Mui-checked": { color: BLUOM_BLUE },
+            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: BLUOM_BLUE }
+          }}
+        />
+      </ListItem>
+    </SettingGroup>
   )
 }
 
@@ -295,145 +246,76 @@ function ResetSettingsArea() {
   const [fileStoreState, fileStoreActions] = useFileStore()
 
   return (
-    <div
-      css={css({
-        display: "flex",
-        flexDirection: "column",
-        marginTop: "16px",
-      })}
-    >
-      <Typography variant="h6">Reset</Typography>
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton
-            onClick={() => {
-              setResetAppDialogOpen(true)
-            }}
-          >
-            <ListItemText
-              primary="Reset App"
-              secondary="Reset all settings and reload the app."
-            />
-          </ListItemButton>
-        </ListItem>
-      </List>
+    <Box>
+      <SettingGroup title="System Maintenance">
+        <ListItemButton 
+          onClick={() => setResetAppDialogOpen(true)}
+          sx={{ color: "#FF3B30" }}
+        >
+          <ListItemText
+            primary="Reset BLUOMmusic"
+            primaryTypographyProps={{ style: { fontWeight: 500 } }}
+            secondary="Wipe settings, cached tracks, and log out."
+          />
+        </ListItemButton>
+      </SettingGroup>
+
       <Dialog
         open={resetAppDialogOpen}
-        onClose={() => {
-          setResetAppDialogOpen(false)
-        }}
-        sx={{ "& .MuiDialog-paper": { borderRadius: "28px" } }}
+        onClose={() => setResetAppDialogOpen(false)}
+        sx={{ "& .MuiDialog-paper": { borderRadius: "20px", p: 1 } }}
       >
-        <DialogTitle
-          sx={{
-            paddingTop: "24px",
-            paddingLeft: "24px",
-            paddingRight: "24px",
-            paddingBottom: "16px",
-          }}
-        >
-          Reset App
-        </DialogTitle>
-        <DialogContent
-          sx={{
-            paddingBottom: "24px",
-          }}
-        >
-          <Typography>
-            This will reset all settings and reload the app, including:
+        <DialogTitle sx={{ fontWeight: 600 }}>Factory Reset Application</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            This will completely clear your configuration and bring the app back to a fresh install layout:
           </Typography>
-          <ul>
-            <li>Clear cached local music data</li>
-            <li>Sign out from connected cloud storage</li>
-          </ul>
-          <Typography>This action cannot be undone.</Typography>
+          <Box component="ul" sx={{ pl: 2, fontSize: "0.875rem", color: "text.secondary" }}>
+            <li>Erases local IndexedDB media tables</li>
+            <li>Revokes cloud security authorization codes</li>
+          </Box>
         </DialogContent>
-        <DialogActions
-          sx={{
-            paddingTop: "0px",
-            paddingBottom: "24px",
-            paddingLeft: "24px",
-            paddingRight: "24px",
-          }}
-        >
-          <Button
-            autoFocus
-            onClick={() => {
-              setResetAppDialogOpen(false)
-            }}
-          >
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setResetAppDialogOpen(false)} sx={{ textTransform: "none", color: "text.secondary" }}>
             Cancel
           </Button>
           <Button
+            variant="contained"
+            disableElevation
             color="error"
             onClick={async () => {
               setBackdropOpen(true)
               localStorage.clear()
-
               sessionStorage.clear()
-
               const fileDb = fileStoreState.fileDb
-              if (fileDb) {
-                fileDb.close()
-              }
-              await new Promise<void>((resolve, reject) => {
+              if (fileDb) fileDb.close()
+              await new Promise<void>((resolve) => {
                 const deleteReq = indexedDB.deleteDatabase("file-db")
                 deleteReq.onsuccess = () => resolve()
-                deleteReq.onerror = () => reject(deleteReq.error)
-                deleteReq.onblocked = () => resolve() // ブロック時も続行
+                deleteReq.onerror = () => resolve()
+                deleteReq.onblocked = () => resolve()
               })
-
-              // const databases = await indexedDB.databases()
-              // await Promise.all(
-              //   databases.map(db => {
-              //     if (db.name) {
-              //       return new Promise<void>((resolve, reject) => {
-              //         const deleteReq = indexedDB.deleteDatabase(db.name!)
-              //         deleteReq.onsuccess = () => resolve()
-              //         deleteReq.onerror = () => reject(deleteReq.error)
-              //       })
-              //     }
-              //   })
-              // )
               routerActions.goHome({ reload: true })
             }}
+            sx={{ borderRadius: "8px", textTransform: "none" }}
           >
-            Reset & Reload
+            Reset Factory Defaults
           </Button>
         </DialogActions>
       </Dialog>
-      {backdropOpen &&
-        createPortal(
-          <Backdrop
-            sx={theme => ({ zIndex: theme.zIndex.modal + 1 })}
-            open={backdropOpen}
-          >
-            <CircularProgress />
-          </Backdrop>,
-          document.body
-        )}
-    </div>
+      {backdropOpen && createPortal(
+        <Backdrop sx={{ zIndex: theme => theme.zIndex.modal + 1 }} open={backdropOpen}>
+          <CircularProgress sx={{ color: BLUOM_BLUE }} />
+        </Backdrop>,
+        document.body
+      )}
+    </Box>
   )
 }
 
 export default function Page() {
   const [routerState, routerActions] = useRouter()
-  const [themeStoreState] = useThemeStore()
-
   const scrollTargetRef = useRef<Node | undefined>(undefined)
-
-  const colorOnSurface = hexFromArgb(
-    MaterialDynamicColors.onSurface.getArgb(themeStoreState.scheme)
-  )
-  const colorOnSurfaceVariant = hexFromArgb(
-    MaterialDynamicColors.onSurfaceVariant.getArgb(themeStoreState.scheme)
-  )
-  const colorSurfaceContainer = hexFromArgb(
-    MaterialDynamicColors.surfaceContainer.getArgb(themeStoreState.scheme)
-  )
-  const colorOutlineVariant = hexFromArgb(
-    MaterialDynamicColors.outlineVariant.getArgb(themeStoreState.scheme)
-  )
 
   return (
     <Box
@@ -441,39 +323,38 @@ export default function Page() {
       sx={{
         height: "100%",
         overflow: "hidden",
+        backgroundColor: "#f5f5f7", // Soft Apple settings gray background
+        display: "flex",
+        flexDirection: "column"
       }}
     >
+      {/* Settings Navigation Top Bar */}
       <AppTopBar scrollTarget={scrollTargetRef.current}>
-        <Toolbar>
+        <Toolbar sx={{ px: 1 }}>
           <IconButton
-            size="large"
             edge="start"
             color="inherit"
-            onClick={() => {
-              routerActions.goBack()
-            }}
+            onClick={() => routerActions.goBack()}
+            sx={{ color: "text.primary" }}
           >
             <ArrowBackRounded />
           </IconButton>
-          <SettingsRounded />
-          <Typography sx={{ mx: 1 }} variant="h6">
+          <Typography sx={{ fontWeight: 700, ml: 1 }} variant="h6">
             Settings
           </Typography>
         </Toolbar>
       </AppTopBar>
+
+      {/* Settings Scrollable Panel Container */}
       <Box
         component="div"
         ref={scrollTargetRef}
         sx={{
-          ml: `env(safe-area-inset-left, 0)`,
-          mr: `env(safe-area-inset-right, 0)`,
           px: 2,
-          pt: 8,
+          pt: 9,
           overflow: "auto",
-          height: "100%",
-          scrollbarColor: `${colorOnSurfaceVariant} transparent`,
-          scrollbarWidth: "thin",
-          pb: `calc(env(safe-area-inset-bottom, 0) + 144px)`,
+          flexGrow: 1,
+          pb: "env(safe-area-inset-bottom, 24px)",
         }}
       >
         <Box
@@ -481,7 +362,7 @@ export default function Page() {
           sx={{
             display: "flex",
             flexDirection: "column",
-            maxWidth: "1040px",
+            maxWidth: "600px",
             margin: "0 auto",
             width: "100%",
           }}
@@ -489,117 +370,39 @@ export default function Page() {
           <StorageSettingsArea />
           <ScreenSettingsArea />
           <ResetSettingsArea />
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            About
-          </Typography>
-          <Paper
-            sx={{
-              p: 2,
-              mt: 2,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              backgroundColor: alpha(colorSurfaceContainer, 0.5),
-              alignSelf: "center",
-              width: "100%",
-              maxWidth: "288px",
-              borderRadius: "12px",
-            }}
-          >
-            <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-              Cloud Music Box
-            </Typography>
-            <img
-              style={{
-                maxWidth: "256px",
-                width: "100%",
-                aspectRatio: "1/1",
-              }}
-              src="./icon-512x512.png"
-              loading="lazy"
-              alt="icon"
-            />
-            <Typography
-              variant="body2"
-              sx={{
-                color: colorOnSurfaceVariant,
-              }}
-            >
-              version: {process.env.APP_VERSION}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: colorOnSurfaceVariant,
-              }}
-            >
-              © 2024- Cloud Music Box
-            </Typography>
-            <Box
-              component="div"
-              sx={{
-                display: "flex",
-                flexDirection: "row",
-                gap: 1,
-                width: "100%",
-                justifyContent: "flex-end",
-              }}
-            >
-              <Link
-                variant="body2"
-                href="https://contentsviewer.work/Master/apps/cloud-music-box/docs"
-                target="_blank"
-                rel="noopener"
-              >
-                Home Page
-              </Link>
-              <Link
-                variant="body2"
-                href="https://github.com/ContentsViewer/cloud-music-box"
-                target="_blank"
-                rel="noopener"
-              >
-                GitHub
-              </Link>
-            </Box>
-          </Paper>
-          <div
-            css={css({
-              display: "flex",
-              flexDirection: "column",
-              // justifyContent: "center",
-              marginTop: "128px",
-              marginBottom: "32px",
-              border: `1px solid ${colorOutlineVariant}`,
-              borderRadius: "12px",
-              padding: "16px",
-              color: colorOnSurfaceVariant,
-              alignSelf: "center",
-            })}
-          >
-            <Typography variant="body2">
-              If you like this app, please consider buying me a coffee.
-              <br /> Thank you!
-            </Typography>
-            <div
-              css={css({
-                marginTop: "16px",
-                display: "flex",
-                justifyContent: "flex-end",
-              })}
-            >
-              <a
-                href="https://www.buymeacoffee.com/contentsviewer"
-                target="_blank"
-              >
-                <img
-                  src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
-                  alt="Buy Me A Coffee"
-                  style={{ height: "60px", width: "217px" }}
-                />
-              </a>
-            </div>
-          </div>
+
+          {/* Clean Apple Style About Section Brand Block */}
+          <SettingGroup title="System Version Info">
+            <ListItem sx={{ py: 2, flexDirection: "column", alignItems: "center", textGap: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "text.primary" }}>
+                BLUOMmusic Player
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Powered by BLUOMtech Engine Core
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                Version: {process.env.APP_VERSION || "1.0.0-fork"}
+              </Typography>
+              <Box sx={{ display: "flex", gap: 3, mt: 2 }}>
+                <Link
+                  variant="caption"
+                  href="https://github.com/ContentsViewer/cloud-music-box"
+                  target="_blank"
+                  rel="noopener"
+                  sx={{ color: BLUOM_BLUE, textDecoration: "none", fontWeight: 500 }}
+                >
+                  Upstream Source
+                </Link>
+                <Link
+                  variant="caption"
+                  href="#"
+                  sx={{ color: BLUOM_BLUE, textDecoration: "none", fontWeight: 500 }}
+                >
+                  BLUOMtech Hub
+                </Link>
+              </Box>
+            </ListItem>
+          </SettingGroup>
         </Box>
       </Box>
     </Box>
